@@ -2,6 +2,15 @@
 
 ## C library and command line tool that emulates network bandwidth and latency for HTTP clients.
 
+# Intro
+
+Bushpath's typical job is to be put between an HTTP client (for example a media player) and some kind of server or CDN. Then specific bandwidth and latency scenarios can be emulated for the client to see a specific network behavior.
+
+## TODO:
+- Runtime configuration
+- Library-only mode
+- Tests
+
 # Setup
 
 You need:
@@ -11,11 +20,16 @@ You need:
 
 ## On OSX:
 
-You can just `brew install glib` (or install the GStreamer SDK framework).
+You can just `brew install glib` (or install the GStreamer SDK framework: http://docs.gstreamer.com/display/GstSDK/Installing+on+Mac+OS+X).
 
 ## On Linux:
 
-Use your favorite package manager to get GLib development files (headers + static lib archive).
+Use your favorite package manager to get GLib development files and binaries (headers + static lib archive).
+
+## Other platforms:
+
+Have a look at https://wiki.gnome.org/Projects/GLib/SupportedPlatforms 
+and http://www.gtk.org/download/index.php.
 
 # Build
 
@@ -56,4 +70,8 @@ make clean
 ```
 ./proxy
 ```
+
+# Tests
+
+To be done!
 
