@@ -8,7 +8,6 @@ Bushpath's typical job is to be put between an HTTP client (for example a media 
 
 ## TODO:
 - Runtime configuration
-- Library-only mode
 - Tests
 
 # Setup
