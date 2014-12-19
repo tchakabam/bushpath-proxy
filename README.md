@@ -2,6 +2,15 @@
 
 ## C library and command line tool that emulates network bandwidth and latency for HTTP clients.
 
+# Intro
+
+Bushpath's typical job is to be put between an HTTP client (for example a media player) and some kind of server or CDN. Then specific bandwidth and latency scenarios can be emulated for the client to see a specific network behavior.
+
+## TODO:
+- Runtime configuration
+- Library-only mode
+- Tests
+
 # Setup
 
 You need:
@@ -61,4 +70,8 @@ make clean
 ```
 ./proxy
 ```
+
+# Tests
+
+To be done!
 
