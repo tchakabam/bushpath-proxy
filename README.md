@@ -15,7 +15,12 @@ You can just `brew install glib` (or install the GStreamer SDK framework).
 
 ## On Linux:
 
-Use your favorite package manager to get GLib development files (headers + static lib archive).
+Use your favorite package manager to get GLib development files and binaries (headers + static lib archive).
+
+## Other platforms:
+
+Have a look at https://wiki.gnome.org/Projects/GLib/SupportedPlatforms 
+and http://www.gtk.org/download/index.php.
 
 # Build
 
