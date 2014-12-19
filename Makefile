@@ -15,19 +15,19 @@ ifeq ($(OSX_GSTREAMER),yes)
 	GCC_FLAGS=-I/Library/Frameworks/GStreamer.framework/Headers/ -L/Library/Frameworks/GStreamer.framework/Libraries/
 endif
 
-.PHONY: all build executable start clean tests
+.PHONY: all build lib cli start clean tests
 
 all: clean build
 
-build: library executable
+build: cli
 
-executable: $(EXECUTABLE_TARGET)
+cli: $(EXECUTABLE_TARGET) library
 
 $(EXECUTABLE_TARGET): $(C_FILES) $(H_FILES)
 	mkdir -p build
 	gcc $(GCC_FLAGS) $(GCC_LIBRARY_FLAGS) -L./build -lbushpath -o build/$(LIB_NAME) src/proxy_cli.c
 
-library: $(ARCHIVE_TARGET) $(HEADERS_TARGET)
+lib: $(ARCHIVE_TARGET) $(HEADERS_TARGET)
 
 $(ARCHIVE_TARGET): $(OBJECT_TARGET)
 	mkdir -p build

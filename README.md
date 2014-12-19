@@ -33,27 +33,34 @@ and http://www.gtk.org/download/index.php.
 
 # Build
 
-NOTE: _If you happen to be on OSX and have the **GStreamer framework** already installed, 
-      then just run all these make commands with `OSX_GSTREAMER=yes` prepended.
-      Thus you will use the headers / binaries included in the framework already 
-      and don't need a further install of GLib somewhere else._ Example: 
-      ```
-      OSX_GSTREAMER=yes make build
-      ```
+NOTE: _If you happen to be on OSX and have the **GStreamer framework** already installed, then just run all these make commands with `OSX_GSTREAMER=yes` prepended.
+Thus you will use the headers / binaries included in the framework already 
+and don't need a further install of GLib somewhere else._ 
 
-### Clean & Build
+Example: 
+```
+OSX_GSTREAMER=yes make build
+```
+
+### Clean & Build CLI (and lib)
 
 ```
 make
 ```
 
-### Build
+### Build lib only
 
 ```
-make build
+make lib
 ```
 
-### Build & Run
+### Build CLI (and lib)
+
+```
+make cli
+```
+
+### Build & Run CLI
 
 ```
 make start
@@ -65,11 +72,9 @@ make start
 make clean
 ```
 
-### Run tool
+_All build artifacts will be located in the *build* folder after calling `make`._
 
-```
-./proxy
-```
+_After a library build you will find the exported API header file in the *include* folder_.
 
 # Tests
 
