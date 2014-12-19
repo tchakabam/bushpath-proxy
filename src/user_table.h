@@ -23,8 +23,7 @@ Read included LICENSE for third-party usage.
 #define MAX_REQUEST_HEADER_SIZE 2048
 #define MAX_HOSTNAME_LENGTH 128
 #define MAX_RESPONSE_BUFFERS 16384
-#define USER_TABLE_LENGTH sizeof(UserTable)/sizeof(InboundConnection)
-#define ITERATE_ON_USER_TABLE for(int i=0;i<USER_TABLE_LENGTH;i++)
+#define ITERATE_ON_USER_TABLE for(int i=0;i<MAX_INBOUND_CONNECTIONS;i++)
 
 typedef enum _Protocol {
     HTTP,
@@ -62,7 +61,7 @@ typedef struct _InboundConnection {
     gint64 lastSendTime;
 } InboundConnection;
 
-typedef InboundConnection UserTable[MAX_INBOUND_CONNECTIONS];
+typedef InboundConnection* UserTable[MAX_INBOUND_CONNECTIONS];
 
 OutboundConnection*
 newOutboundConnection (GSocketClient *client)
@@ -79,24 +78,24 @@ newOutboundConnection (GSocketClient *client)
     return out;
 }
 
-InboundConnection
+InboundConnection*
 newUser (gboolean enabled)
 {
-    InboundConnection user;
-    user.out = NULL;
-    user.connection = NULL;
-    user.sourceChannel = NULL;
-    user.enabled = enabled;
-    user.lineReadCount = 0;
-    user.protocol = UNDEFINED;
+    InboundConnection* user = (InboundConnection*) g_malloc (sizeof(InboundConnection));
+    user->out = NULL;
+    user->connection = NULL;
+    user->sourceChannel = NULL;
+    user->enabled = enabled;
+    user->lineReadCount = 0;
+    user->protocol = UNDEFINED;
     //user.destinationHost[0] = '\0';
-    memset (user.destinationHost, 0, MAX_HOSTNAME_LENGTH);
-    memset (user.requestHeaderBuffer, 0, sizeof(user.requestHeaderBuffer));
-    user.requestHeaderOffset = 0;
-    user.maxBandwidthKbps = 32;
-    user.minDelayMs = -1;
-    user.lastSendTime = -1;
-    user.bytesWrittenCount = 0;
+    memset (user->destinationHost, 0, MAX_HOSTNAME_LENGTH);
+    memset (user->requestHeaderBuffer, 0, sizeof(user->requestHeaderBuffer));
+    user->requestHeaderOffset = 0;
+    user->maxBandwidthKbps = -1;
+    user->minDelayMs = -1;
+    user->lastSendTime = -1;
+    user->bytesWrittenCount = 0;
     return user;
 }
 
@@ -105,20 +104,20 @@ findUser (UserTable users, GSocketConnection *connection, GIOChannel *sourceChan
 {
     ITERATE_ON_USER_TABLE
     {
-        if (users[i].connection == connection && users[i].sourceChannel == sourceChannel)
+        if (users[i]->connection == connection && users[i]->sourceChannel == sourceChannel)
         {
-            return &users[i];
+            return users[i];
         }
     }
     return NULL;
 }
 
 gboolean
-addUser (UserTable users, InboundConnection user)
+addUser (UserTable users, InboundConnection *user)
 {
     ITERATE_ON_USER_TABLE
     {
-        if (!users[i].enabled) {
+        if (!users[i]) {
             users[i] = user;
             return TRUE;
         }
@@ -132,10 +131,9 @@ addUser (UserTable users, InboundConnection user)
 void
 resetUserTable (UserTable users)
 {
-    InboundConnection nullUser = newUser (FALSE);
     ITERATE_ON_USER_TABLE
     {
-        users[i] = nullUser;
+        users[i] = NULL;
     }
 }
 

@@ -1,7 +1,7 @@
 GCC_FLAGS=
 GCC_LIBRARY_FLAGS = -lglib-2.0 -lgio-2.0 -lgobject-2.0 -lgnutls
 
-PROXY_EXECUTABLE_NAME = proxy
+LIB_NAME = bushpath
 
 ifeq ($(OSX_GSTREAMER),yes)
 	GCC_FLAGS=-I/Library/Frameworks/GStreamer.framework/Headers/ -L/Library/Frameworks/GStreamer.framework/Libraries/
@@ -11,17 +11,24 @@ endif
 
 all: clean build
 
-build: executable
+build: library executable
 
 executable:
-	gcc $(GCC_FLAGS) $(GCC_LIBRARY_FLAGS) -o $(PROXY_EXECUTABLE_NAME) src/proxy.c
+	gcc $(GCC_FLAGS) $(GCC_LIBRARY_FLAGS) -L. -lbushpath -o $(LIB_NAME) src/proxy.c
 
 library:
+	gcc $(GCC_FLAGS) -o $(LIB_NAME).o -c src/libproxy.c
+	ar rcs lib$(LIB_NAME).a $(LIB_NAME).o
 
 start: build
-	./proxy
+	./$(LIB_NAME)
+
+start-valgrind: build
+	valgrind ./$(LIB_NAME)
 
 clean:
-	rm -f proxy
+	rm -f $(LIB_NAME).o
+	rm -f lib$(LIB_NAME).a
+	rm -f $(LIB_NAME)
 
 tests:

@@ -1,1 +1,4 @@
 proxy
+bushpath
+*.o
+*.a
