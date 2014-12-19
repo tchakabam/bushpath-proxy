@@ -1,3 +1,14 @@
+/*
+
+BUSHPATH PROXY
+
+@author: Stephan Hesse <stephan@soundcloud.com> <disparat@gmail.com>
+
+Copyright (c) 2014, 2015 Stephan Hesse
+
+Read included LICENSE for third-party usage.
+
+*/
 
 // Compile-and-run-bang-line:
 

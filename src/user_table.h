@@ -1,3 +1,15 @@
+/*
+
+BUSHPATH PROXY
+
+@author: Stephan Hesse <stephan@soundcloud.com> <disparat@gmail.com>
+
+Copyright (c) 2014, 2015 Stephan Hesse
+
+Read included LICENSE for third-party usage.
+
+*/
+
 #ifndef __PROXY_USER_TABLE__
 #define __PROXY_USER_TABLE__
 
