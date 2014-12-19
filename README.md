@@ -72,9 +72,11 @@ make start
 make clean
 ```
 
-_All build artifacts will be located in the *build* folder after calling `make`._
+# API & CLI
 
-_After a library build you will find the exported API header file in the *include* folder_.
+**All build artifacts (with the CLI executable) will be located in the _build_ folder after calling `make`.**
+
+**After a library build you will find the exported API header file in the _include_ folder.**
 
 # Tests
 
