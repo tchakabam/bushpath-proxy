@@ -11,7 +11,7 @@ You need:
 
 ## On OSX:
 
-You can just `brew install glib` (or install the GStreamer SDK framework).
+You can just `brew install glib` (or install the GStreamer SDK framework: http://docs.gstreamer.com/display/GstSDK/Installing+on+Mac+OS+X).
 
 ## On Linux:
 
