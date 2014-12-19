@@ -1,7 +1,11 @@
-
-GLIB_HEADERS_DIR = /Library/Frameworks/GStreamer.framework/Headers/
+GCC_FLAGS=
 GCC_LIBRARY_FLAGS = -lglib-2.0 -lgio-2.0 -lgobject-2.0 -lgnutls
-PROXY_EXECUTABLE_BINARY_NAME = proxy
+
+PROXY_EXECUTABLE_NAME = proxy
+
+ifeq ($(OSX_GSTREAMER),yes)
+	GCC_FLAGS=-I/Library/Frameworks/GStreamer.framework/Headers/ -L/Library/Frameworks/GStreamer.framework/Libraries/
+endif
 
 .PHONY: all build executable start clean tests
 
@@ -10,7 +14,7 @@ all: clean build
 build: executable
 
 executable:
-	gcc -I$(GLIB_HEADERS_DIR) $(GCC_LIBRARY_FLAGS) -o $(PROXY_EXECUTABLE_BINARY_NAME) src/proxy.c
+	gcc $(GCC_FLAGS) $(GCC_LIBRARY_FLAGS) -o $(PROXY_EXECUTABLE_NAME) src/proxy.c
 
 library:
 
