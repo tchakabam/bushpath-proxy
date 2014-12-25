@@ -16,7 +16,6 @@ Read included LICENSE for third-party usage.
 #include <gio/gio.h>
 
 #include "api.h"
-#include "transport.h"
 #include "io_handlers.h"
 
 BushpathProxy*
@@ -60,7 +59,7 @@ BushpathProxy_New (GMainContext *context, BushpathProxyOptions options)
     g_message ("IO service is up");
     g_message ("Attaching signals ...");
     // Pass proxy instance as user data
-    g_signal_connect(proxy->service, "incoming", G_CALLBACK(onNewConnection), proxy);
+    g_signal_connect(proxy->service, "incoming", G_CALLBACK(onInboundConnectionNew), proxy);
     g_message ("Attached!");
 
     g_object_get (proxy->socketAddress, "port", &proxy->options.port, NULL);

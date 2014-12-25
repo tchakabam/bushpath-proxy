@@ -14,6 +14,7 @@ Read included LICENSE for third-party usage.
 #include <gio/gio.h>
 
 #include "api.h"
+#include "http_handlers.h"
 #include "transport.h"
 
 #ifndef __PROXY_IO_HANDLERS__
@@ -40,7 +41,7 @@ destroyIOHandlerData (IOHandlerData* data)
 }
 
 gboolean
-onNetworkRead(GIOChannel *sourceChannel,
+onInboundConnectionReceive(GIOChannel *sourceChannel,
             GIOCondition idCond,
             gpointer userData) // IOHandlerData*
 {
@@ -85,7 +86,7 @@ onNetworkRead(GIOChannel *sourceChannel,
 }
 
 gboolean
-onNewConnection(GSocketService *service,
+onInboundConnectionNew(GSocketService *service,
               GSocketConnection *connection,
               GObject *source_object,
               gpointer user_data)
@@ -119,7 +120,7 @@ onNewConnection(GSocketService *service,
     user->out = newOutboundConnection (proxy->client);
 
     // Add IO watch with pointer to connection handle as user data for callback
-    g_io_add_watch(channel, G_IO_IN, (GIOFunc) onNetworkRead, newIOHandlerData(proxy, user));
+    g_io_add_watch(channel, G_IO_IN, (GIOFunc) onInboundConnectionReceive, newIOHandlerData(proxy, user));
 
     return TRUE;
 }

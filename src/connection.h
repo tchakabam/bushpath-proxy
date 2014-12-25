@@ -10,8 +10,8 @@ Read included LICENSE for third-party usage.
 
 */
 
-#ifndef __PROXY_USER_TABLE__
-#define __PROXY_USER_TABLE__
+#ifndef __PROXY_CONNECTION__
+#define __PROXY_CONNECTION__
 
 #include <glib.h>
 #include <gio/gio.h>
@@ -23,7 +23,6 @@ Read included LICENSE for third-party usage.
 #define MAX_REQUEST_HEADER_SIZE 2048
 #define MAX_HOSTNAME_LENGTH 128
 #define MAX_RESPONSE_BUFFERS 16384
-#define ITERATE_ON_USER_TABLE for(int i=0;i<MAX_INBOUND_CONNECTIONS;i++)
 
 typedef enum _Protocol {
     HTTP,
@@ -31,9 +30,9 @@ typedef enum _Protocol {
 } Protocol;
 
 /*
-typedef struct _Packet {
-
-} Packet;
+typedef struct _Buffer {
+    glong sequenceNumber;
+} Buffer;
 */
 
 typedef struct _OutboundConnection {
@@ -101,48 +100,32 @@ newInboundConnection (GSocketConnection* connection, GIOChannel *channel)
     return user;
 }
 
-/*
-
-InboundConnection *
-findUser (UserTable users, GSocketConnection *connection, GIOChannel *sourceChannel)
+gchar*
+getSocketRemoteIP (GSocketConnection* conn, GError** error)
 {
-    g_message ("findUser");
-    ITERATE_ON_USER_TABLE
-    {
-        if (users[i]->connection == connection && users[i]->sourceChannel == sourceChannel)
-        {
-            g_message ("%d", (int) i);
-            return users[i];
-        }
-    }
-    return NULL;
+    return g_inet_address_to_string (
+        G_INET_ADDRESS(
+            g_inet_socket_address_get_address (
+                G_INET_SOCKET_ADDRESS(
+                    g_socket_connection_get_remote_address (
+                        conn, error
+                    )
+                )
+            )
+        )
+    );
 }
 
-gboolean
-addUser (UserTable users, InboundConnection *user)
+guint16
+getSocketRemotePort (GSocketConnection* conn, GError** error)
 {
-    ITERATE_ON_USER_TABLE
-    {
-        if (!users[i]) {
-            users[i] = user;
-            return TRUE;
-        }
-    }
-
-    g_warning ("No more space for user connection data");
-
-    return FALSE;
+    return g_inet_socket_address_get_port (
+                G_INET_SOCKET_ADDRESS(
+                    g_socket_connection_get_remote_address (
+                        conn, error
+                    )
+                )
+            );
 }
-
-void
-resetUserTable (UserTable users)
-{
-    ITERATE_ON_USER_TABLE
-    {
-        users[i] = NULL;
-    }
-}
-
-*/
 
 #endif
