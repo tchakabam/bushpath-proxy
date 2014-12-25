@@ -1,5 +1,7 @@
 # A proxy for the bush! 
 
+<img src="http://4.bp.blogspot.com/_KJGCEv5TI4M/TJ-r1Xokh4I/AAAAAAAAAEE/Yw_Ayk_v-hQ/s1600/Home+bush+path+to+class.jpg">
+
 ## C library and command line tool that emulates network bandwidth and latency for HTTP clients.
 
 # Intro
@@ -8,7 +10,6 @@ Bushpath's typical job is to be put between an HTTP client (for example a media 
 
 ## TODO:
 - Runtime configuration
-- Library-only mode
 - Tests
 
 # Setup
@@ -72,9 +73,11 @@ make start
 make clean
 ```
 
-_All build artifacts will be located in the *build* folder after calling `make`._
+# API & CLI
 
-_After a library build you will find the exported API header file in the *include* folder_.
+**All build artifacts (with the CLI executable) will be located in the _build_ folder after calling `make`.**
+
+**After a library build you will find the exported API header file in the _include_ folder.**
 
 # Tests
 
