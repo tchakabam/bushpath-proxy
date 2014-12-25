@@ -13,19 +13,19 @@ Read included LICENSE for third-party usage.
 #include <glib.h>
 #include <gio/gio.h>
 
-#include "proxy.h"
-#include "connections.h"
+#include "api.h"
+#include "transport.h"
 
 #ifndef __PROXY_IO_HANDLERS__
 #define __PROXY_IO_HANDLERS__
 
 typedef struct _IOHandlerData {
 	BushpathProxy* proxy;
-	GSocketConnection* connection;
+	InboundConnection* connection;
 } IOHandlerData;
 
 IOHandlerData*
-newIOHandlerData (BushpathProxy* proxy, GSocketConnection* connection)
+newIOHandlerData (BushpathProxy* proxy, InboundConnection* connection)
 {
 	IOHandlerData* handlerData = (IOHandlerData*) g_malloc(sizeof(IOHandlerData));
 	handlerData->proxy = proxy;
@@ -45,7 +45,7 @@ onNetworkRead(GIOChannel *sourceChannel,
             gpointer userData) // IOHandlerData*
 {
     IOHandlerData* handlerData = (IOHandlerData*) userData;
-    InboundConnection* user = findUser (handlerData->proxy->users, handlerData->connection, sourceChannel);
+    InboundConnection* user = (InboundConnection*) handlerData->connection;
     gboolean res = TRUE;
     gboolean forward = TRUE;
 
@@ -55,7 +55,7 @@ onNetworkRead(GIOChannel *sourceChannel,
         return FALSE;
     }
 
-    g_message ("Network read: Found connection/IO-channel in user table mapped @ %p", user);
+    g_message ("Network read: User data mapped @ %p", user);
 
     // TODO: We only parse on header per connection!
     // So this means we can't multiplex several user HTTP connections
@@ -115,14 +115,11 @@ onNewConnection(GSocketService *service,
 
     g_message ("Attaching IO watch");
 
-    // Add IO watch with pointer to connection handle as user data for callback
-    g_io_add_watch(channel, G_IO_IN, (GIOFunc) onNetworkRead, newIOHandlerData(proxy, connection));
-
-    user = newUser (TRUE);
-    user->sourceChannel = channel;
-    user->connection = connection;
+    user = newInboundConnection (connection, channel);
     user->out = newOutboundConnection (proxy->client);
-    addUser (proxy->users, user);
+
+    // Add IO watch with pointer to connection handle as user data for callback
+    g_io_add_watch(channel, G_IO_IN, (GIOFunc) onNetworkRead, newIOHandlerData(proxy, user));
 
     return TRUE;
 }

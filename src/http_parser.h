@@ -16,7 +16,7 @@ Read included LICENSE for third-party usage.
 #include <stdio.h>
 #include <string.h>
 
-#include "user_table.h"
+#include "connection.h"
 
 void
 parseRequestLine (InboundConnection * user, gchar* s)
@@ -151,7 +151,7 @@ readConnectionHeader (InboundConnection * user, gboolean *res)
 
     while (*res) {
 
-        ret = g_io_channel_read_line(user->sourceChannel, &s, &length, &termPos, &error);
+        ret = g_io_channel_read_line(user->channel, &s, &length, &termPos, &error);
 
         switch (ret) {
         case G_IO_STATUS_ERROR: {

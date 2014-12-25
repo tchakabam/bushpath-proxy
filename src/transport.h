@@ -16,7 +16,7 @@ Read included LICENSE for third-party usage.
 #include <glib.h>
 #include <gio/gio.h>
 
-#include "user_table.h"
+#include "connection.h"
 #include "http_parser.h"
 
 #define DEFAULT_PORT 80
@@ -166,7 +166,7 @@ receiveOutboundData (gpointer data)
             return TRUE;
         }
         g_warning ("Error receiving data from socket (%s): %s", user->destinationHost, error->message);
-        g_object_unref(error);
+        g_error_free(error);
         return FALSE;
     }
 
@@ -247,6 +247,8 @@ ensureOpenOutboundConnection (InboundConnection * user, gboolean *res)
     GError *error = NULL;
     gchar *address = NULL;
     GSocket* socket;
+    gint fd;
+    GIOChannel *channel;
 
     g_message ("ensureOpenOutboundConnection()");
 
@@ -258,10 +260,16 @@ ensureOpenOutboundConnection (InboundConnection * user, gboolean *res)
     *res = FALSE;
     g_return_if_fail(user->destinationHost && strlen(user->destinationHost));
 
+    g_message ("Client %p", user->out->client);
+
+    g_return_if_fail(user->out->client);
+
     g_message ("Connectiong to host ... : %s", user->destinationHost);
 
     //FIXME: Rather use g_socket_client_connect_to_uri ?
     user->out->connection = g_socket_client_connect_to_host (user->out->client, user->destinationHost, port, NULL, &error);
+
+    g_message ("Validating connection ...");
 
     if (error) {
         g_warning ("Failed to create outbound connection to host %s: %s", user->destinationHost, error->message);
@@ -280,6 +288,11 @@ ensureOpenOutboundConnection (InboundConnection * user, gboolean *res)
     socket = g_socket_connection_get_socket (user->out->connection);
     g_return_if_fail (socket);
     g_object_set (socket, "blocking", FALSE, NULL);
+
+    // Get IO channel
+    fd = g_socket_get_fd(socket);
+    channel = g_io_channel_unix_new(fd);
+    user->out->channel = channel;
 
     g_free (address);
 
@@ -308,7 +321,7 @@ forwardData (InboundConnection * user, gboolean *res)
         g_return_if_fail (res);
         // set up timeout to receive data for this user
         g_timeout_add(SOCKET_RECEIVE_POLL_PERIOD, receiveOutboundData, user);
-        g_timeout_add(SOCKET_RECEIVE_POLL_PERIOD, sendInboundData, user);
+        g_timeout_add(SOCKET_RECEIVE_POLL_PERIOD+1, sendInboundData, user);
     }
 }
 

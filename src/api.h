@@ -1,12 +1,27 @@
 #include <glib.h>
+#include <gio/gio.h>
 
 #ifndef __PROXY_API__
 #define __PROXY_API__
 
-typedef struct _BushpathProxy BushpathProxy;
+typedef struct _BushpathProxyOptions {
+	guint16 port;
+	gchar* bindAddress;
+} BushpathProxyOptions;
+
+typedef BushpathProxyOptions BPOptions;
+
+typedef struct _BushpathProxy {
+    GInetAddress *inetAddress;
+    GSocketAddress *socketAddress;
+    GSocketService *service;
+    GSocketClient *client;
+    GMainContext *context;
+    BushpathProxyOptions options;
+} BushpathProxy;
 
 BushpathProxy*
-BushpathProxy_New (GMainLoop *loop);
+BushpathProxy_New (GMainContext *loop, BushpathProxyOptions options);
 
 void
 BushpathProxy_Destroy (BushpathProxy* proxy);

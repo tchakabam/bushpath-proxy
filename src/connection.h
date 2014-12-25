@@ -30,14 +30,16 @@ typedef enum _Protocol {
     UNDEFINED,
 } Protocol;
 
+/*
 typedef struct _Packet {
 
 } Packet;
+*/
 
 typedef struct _OutboundConnection {
     GSocketClient* client;
     GSocketConnection *connection;
-    GIOChannel *destChannel;
+    GIOChannel *channel;
     guint bytesWrittenCount;
     gchar* responseBuffers[MAX_RESPONSE_BUFFERS];
     gsize responseBuffersSize[MAX_RESPONSE_BUFFERS];
@@ -46,9 +48,9 @@ typedef struct _OutboundConnection {
 } OutboundConnection;
 
 typedef struct _InboundConnection {
+    GMutex mutex;
     GSocketConnection *connection;
-    GIOChannel *sourceChannel;
-    gboolean enabled;
+    GIOChannel *channel;
     guint lineReadCount;
     Protocol protocol;
     gchar destinationHost[MAX_HOSTNAME_LENGTH];
@@ -61,7 +63,7 @@ typedef struct _InboundConnection {
     gint64 lastSendTime;
 } InboundConnection;
 
-typedef InboundConnection* UserTable[MAX_INBOUND_CONNECTIONS];
+//typedef InboundConnection* UserTable[MAX_INBOUND_CONNECTIONS];
 
 OutboundConnection*
 newOutboundConnection (GSocketClient *client)
@@ -69,7 +71,7 @@ newOutboundConnection (GSocketClient *client)
     OutboundConnection *out = (OutboundConnection*) g_malloc (sizeof(OutboundConnection));
     out->client = client;
     out->bytesWrittenCount = 0;
-    out->destChannel = NULL;
+    out->channel = NULL;
     out->connection = NULL;
     memset (out->responseBuffers, 0, sizeof(out->responseBuffers));
     memset (out->responseBuffersSize, 0, sizeof(out->responseBuffersSize));
@@ -79,13 +81,13 @@ newOutboundConnection (GSocketClient *client)
 }
 
 InboundConnection*
-newUser (gboolean enabled)
+newInboundConnection (GSocketConnection* connection, GIOChannel *channel)
 {
     InboundConnection* user = (InboundConnection*) g_malloc (sizeof(InboundConnection));
+    g_mutex_init (&user->mutex);
     user->out = NULL;
-    user->connection = NULL;
-    user->sourceChannel = NULL;
-    user->enabled = enabled;
+    user->connection = connection;
+    user->channel = channel;
     user->lineReadCount = 0;
     user->protocol = UNDEFINED;
     //user.destinationHost[0] = '\0';
@@ -99,13 +101,17 @@ newUser (gboolean enabled)
     return user;
 }
 
+/*
+
 InboundConnection *
 findUser (UserTable users, GSocketConnection *connection, GIOChannel *sourceChannel)
 {
+    g_message ("findUser");
     ITERATE_ON_USER_TABLE
     {
         if (users[i]->connection == connection && users[i]->sourceChannel == sourceChannel)
         {
+            g_message ("%d", (int) i);
             return users[i];
         }
     }
@@ -136,5 +142,7 @@ resetUserTable (UserTable users)
         users[i] = NULL;
     }
 }
+
+*/
 
 #endif
