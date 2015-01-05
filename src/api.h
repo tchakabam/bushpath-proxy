@@ -12,10 +12,6 @@ typedef struct _BushpathProxyOptions {
 typedef BushpathProxyOptions BPOptions;
 
 typedef struct _BushpathProxy {
-    GInetAddress *inetAddress;
-    GSocketAddress *socketAddress;
-    GSocketService *service;
-    GSocketClient *client;
     GMainContext *context;
     BushpathProxyOptions options;
 } BushpathProxy;

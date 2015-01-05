@@ -2,13 +2,18 @@
 #include <gio/gio.h>
 
 #include "connection.h"
-#include "transport.h"
 #include "http_parser.h"
 
 #ifndef __PROXY_HTTP_HANDLERS__
 #define __PROXY_HTTP_HANDLERS__
 
 #define DEFAULT_PORT 80
+
+gboolean
+inboundConnectionHeaderParsed (InboundConnection * user)
+{
+    return user->protocol == HTTP && strlen(user->destinationHost) > 0;
+}
 
 void
 ensureOpenOutboundConnection (InboundConnection * user, gboolean *res)
