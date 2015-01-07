@@ -1,8 +1,7 @@
 #include <glib.h>
 #include <gio/gio.h>
 
-#ifndef __PROXY_API__
-#define __PROXY_API__
+#pragma once
 
 typedef struct _BushpathProxyOptions {
 	guint16 port;
@@ -16,10 +15,16 @@ typedef struct _BushpathProxy {
     BushpathProxyOptions options;
 } BushpathProxy;
 
-BushpathProxy*
-BushpathProxy_New (GMainContext *loop, BushpathProxyOptions options);
+BushpathProxyOptions
+BushpathProxyOptions_New (gchar* bindAddress, guint16 port);
 
 void
-BushpathProxy_Destroy (BushpathProxy* proxy);
+BushpathProxyOptions_Free (BushpathProxyOptions* options);
 
-#endif
+BushpathProxy*
+BushpathProxy_New (GMainContext *context, BushpathProxyOptions options,
+							int *argc, char **argv);
+
+void
+BushpathProxy_Free (BushpathProxy* proxy);
+

@@ -10,7 +10,7 @@
 #include "../src/api.h"
 
 #define PROXY_HOST "127.0.0.1"
-#define PROXY_PORT 8080
+#define PROXY_PORT 6900
 
 GMainLoop* loop = NULL;
 GThread* thread = NULL;
@@ -19,6 +19,8 @@ BushpathProxy* proxy = NULL;
 BushpathProxyOptions options;
 gchar *responseBuffer = NULL;
 gsize responseBufferSize = 0;
+int *ARGC;
+char **ARGV;
 
 static gpointer
 runMainLoop (gpointer data)
@@ -45,7 +47,7 @@ teardown (void **state)
   g_thread_join (thread);
   thread = NULL;
 
-  BushpathProxy_Destroy (proxy);
+  BushpathProxy_Free (proxy);
   proxy = NULL;
 
   curl_easy_cleanup (curl);
@@ -81,7 +83,7 @@ setup (void **state)
   options.bindAddress = PROXY_HOST;
 
   loop = g_main_loop_new(NULL, FALSE);
-  proxy = BushpathProxy_New  (g_main_loop_get_context(loop), options);
+  proxy = BushpathProxy_New  (g_main_loop_get_context(loop), options, ARGC, ARGV);
   thread = g_thread_new ("api_test", runMainLoop, NULL);
 
   // Poll main loop until it's running
@@ -150,8 +152,8 @@ testReset ()
 {
   assert_non_null (loop);
 
-  BushpathProxy_Destroy (proxy);
-  proxy = BushpathProxy_New  (g_main_loop_get_context(loop), options);
+  BushpathProxy_Free (proxy);
+  proxy = BushpathProxy_New  (g_main_loop_get_context(loop), options, ARGC, ARGV);
 }
 
 static void
@@ -178,6 +180,9 @@ main (int argc, char **argv)
 
   // We never ever want anything with warnings to succeed
   g_log_set_always_fatal (G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL | G_LOG_LEVEL_WARNING);
+
+  ARGC = &argc;
+  ARGV = argv;
 
   return run_tests (tests);
 }

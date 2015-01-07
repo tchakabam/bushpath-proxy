@@ -16,7 +16,7 @@ int main(int argc, char **argv)
 {
     GMainLoop* loop = g_main_loop_new(NULL, FALSE);
 
-    BushpathProxyOptions options;
+    BushpathProxyOptions options = BushpathProxyOptions_New ("127.0.0.1", 8080);
     BushpathProxy* proxy = BushpathProxy_New  (g_main_loop_get_context(loop), options);
 
     g_log_set_handler (NULL, G_LOG_LEVEL_MASK | G_LOG_FLAG_RECURSION | G_LOG_FLAG_FATAL,

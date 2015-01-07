@@ -1,6 +1,6 @@
 GCC_FLAGS         =
 GCC_INCLUDE_FLAGS =
-GCC_LIBRARY_FLAGS = -lglib-2.0 -lgio-2.0 -lgobject-2.0 -lgnutls -lcmocka -lcurl
+GCC_LIBRARY_FLAGS = -lglib-2.0 -lgio-2.0 -lgobject-2.0 -lgnutls -lcmocka -lcurl -lgstreamer-1.0
 
 LIB_NAME = bushpath
 
@@ -34,11 +34,15 @@ lib: $(ARCHIVE_TARGET) $(HEADERS_TARGET)
 
 $(ARCHIVE_TARGET): $(OBJECT_TARGET)
 	mkdir -p build
-	ar rcs $(ARCHIVE_TARGET) $(OBJECT_TARGET)
+	ar rcs $(ARCHIVE_TARGET) $(OBJECT_TARGET) build/tcp_client.o build/tcp_service.o build/throttler.o build/http_parser.o
 
 $(OBJECT_TARGET): $(C_FILES) $(H_FILES)
 	mkdir -p build
 	gcc $(GCC_FLAGS) $(GCC_INCLUDE_FLAGS) -o build/$(LIB_NAME).o -c src/proxy_api.c
+	gcc $(GCC_FLAGS) $(GCC_INCLUDE_FLAGS) -o build/tcp_client.o -c src/tcp_client.c
+	gcc $(GCC_FLAGS) $(GCC_INCLUDE_FLAGS) -o build/tcp_service.o -c src/tcp_service.c
+	gcc $(GCC_FLAGS) $(GCC_INCLUDE_FLAGS) -o build/throttler.o -c src/throttler.c
+	gcc $(GCC_FLAGS) $(GCC_INCLUDE_FLAGS) -o build/http_parser.o -c src/http_parser.c
 
 $(HEADERS_TARGET): src/api.h
 	rm -Rf include
@@ -56,7 +60,7 @@ clean:
 	rm -f $(OBJECT_TARGET)
 	rm -f $(HEADERS_TARGET)
 
-tests: build/connection_test
+tests: build/api_test
 
 build/connection_test: lib $(TEST_C_FILES)
 	gcc $(GCC_FLAGS) $(GCC_INCLUDE_FLAGS) $(GCC_LIBRARY_FLAGS) -L./build -lbushpath -o build/connection_test tests/connection_test.c
@@ -64,4 +68,4 @@ build/connection_test: lib $(TEST_C_FILES)
 
 build/api_test: lib $(TEST_C_FILES)
 	gcc $(GCC_FLAGS) $(GCC_INCLUDE_FLAGS) $(GCC_LIBRARY_FLAGS) -L./build -lbushpath -o build/api_test tests/api_test.c
-	valgrind ./build/api_test
+	./build/api_test

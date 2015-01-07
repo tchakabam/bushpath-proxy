@@ -12,21 +12,62 @@ Read included LICENSE for third-party usage.
 
 */
 
+#include <string.h>
+
 #include <glib.h>
 #include <gio/gio.h>
 
 #include "api.h"
-#include "io_handlers.h"
+
+#include "tcp_client.h"
+#include "tcp_service.h"
+#include "throttler.h"
+#include "http_parser.h"
+
+GError* InitGStreamer (int* argc, char** argv)
+{
+    // Init GStreamer
+    GError* error = NULL;
+    if (!gst_init_check (NULL, NULL, &error)) {
+        g_warning ("Could not init GStreamer!");
+    }
+    return error;
+}
+
+BushpathProxyOptions
+BushpathProxyOptions_New (gchar* bindAddress, guint16 port)
+{
+    BushpathProxyOptions options;
+    options.bindAddress = strdup(bindAddress);
+    options.port = port;
+    return options;
+}
+
+void
+BushpathProxyOptions_Free (BushpathProxyOptions* options)
+{
+    g_free (options->bindAddress);
+}
+
+void
+BushpathProxy_HeaderComplete (GstElement* element);
 
 BushpathProxy*
-BushpathProxy_New (GMainContext *context, BushpathProxyOptions options)
+BushpathProxy_New (GMainContext *context, BushpathProxyOptions options, int *argc, char **argv)
 {
     gchar* url;
+    GError* error;
+    GstElement *tcpService, *tcpClient, *throttler, *httpParser;
+    GstElement *pipeline;
+    GstStateChangeReturn stateChangeRet;
 
     g_message ("Validating input ...");
 
     g_return_val_if_fail (context, NULL);
-    g_return_val_if_fail (options.bindAddress, NULL);
+
+    if (options.bindAddress == NULL) {
+        options.bindAddress = "127.0.0.1";
+    }
 
     g_message ("Allocating memory ...");
 
@@ -37,53 +78,61 @@ BushpathProxy_New (GMainContext *context, BushpathProxyOptions options)
 
     proxy->options = options;
     proxy->options.bindAddress = strdup(options.bindAddress);
-
     proxy->context = context;
-    // start service, client, and main loop
-    proxy->service = g_socket_service_new();
-    proxy->client = g_socket_client_new();
 
-    // create network address
-    proxy->inetAddress = g_inet_address_new_from_string(proxy->options.bindAddress);
-    proxy->socketAddress = g_inet_socket_address_new(proxy->inetAddress, proxy->options.port);
+    // Launch GStreamer
+    error = InitGStreamer(argc, argv);
+    if (error) {
+        g_error ("Error initializing GStreamer: %s", error->message);
+        g_error_free (error);
+        return NULL;
+    }
 
-    // add server socket to service and attach listener
-    g_socket_listener_add_address(G_SOCKET_LISTENER(proxy->service),
-                                                    proxy->socketAddress,
-                                                    G_SOCKET_TYPE_STREAM,
-                                                    G_SOCKET_PROTOCOL_TCP,
-                                                    NULL, NULL, NULL);
+    // Register elements on GStreamer factory
+    bp_http_parser_setup ();
+    bp_throttler_setup ();
+    bp_tcp_service_setup ();
+    bp_tcp_client_setup ();
 
-    g_message ("Starting IO service...");
+    // Create elements
+    tcpService = gst_element_factory_make ("bp_tcpservice", NULL);
+    tcpClient = gst_element_factory_make ("bp_tcpclient", NULL);
+    throttler = gst_element_factory_make ("bp_throttler", NULL);
+    httpParser = gst_element_factory_make ("bp_http_parser", NULL);
 
-    // Connect socket to IO service
-    g_socket_service_start(proxy->service);
-    g_message ("IO service is up");
-    g_message ("Attaching signals ...");
+    // Link pipeline
+    pipeline = gst_pipeline_new ("bp_proxy");
+    gst_bin_add_many (GST_BIN (pipeline), tcpService, httpParser, throttler, tcpClient, NULL);
+    if (!gst_element_link_many (tcpService, httpParser, throttler, tcpClient, NULL)) {
+        g_error ("Cannot link gstreamer elements");
+        return NULL;
+    }
 
-    // Pass proxy instance as user data
-    g_signal_connect(proxy->service, "incoming", G_CALLBACK(BushpathProxy_IncomingConnection), proxy);
-    g_message ("Attached!");
+    g_message ("Elements created and linked!");
 
-    g_object_get (proxy->socketAddress, "port", &proxy->options.port, NULL);
-    url = g_inet_address_to_string (proxy->inetAddress);
-    g_message ("Local IP/Port: %s:%u", url, proxy->options.port);
-    g_free (url);
+    // Attach signals
+    g_signal_connect(httpParser, "header-complete", G_CALLBACK(BushpathProxy_HeaderComplete), NULL);
+
+    stateChangeRet = gst_element_set_state (GST_ELEMENT (pipeline), GST_STATE_PLAYING);
+    if (stateChangeRet != GST_STATE_CHANGE_SUCCESS) {
+        g_warning ("State change returned %d", (int) stateChangeRet);
+    }
+
+    g_message ("State change performed with result %d", (int) stateChangeRet);
 
     return proxy;
 }
 
 void
-BushpathProxy_Destroy (BushpathProxy* proxy)
+BushpathProxy_HeaderComplete (GstElement* element)
+{
+    g_message ("Header complete signal received");
+}
+
+void
+BushpathProxy_Free (BushpathProxy* proxy)
 {
     g_message ("Destroying proxy ...");
-
-    g_object_unref (proxy->inetAddress);
-    g_object_unref (proxy->socketAddress);
-    g_object_unref (proxy->client);
-    g_object_unref (proxy->service);
-
-    // TODO: Free / unref user connection data
 
     g_free (proxy->options.bindAddress);
     g_free (proxy);
