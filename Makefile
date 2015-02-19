@@ -18,7 +18,7 @@ ifeq ($(OSX_GSTREAMER),yes)
 	GCC_INCLUDE_FLAGS=-I/Library/Frameworks/GStreamer.framework/Headers/ -L/Library/Frameworks/GStreamer.framework/Libraries/
 endif
 
-.PHONY: all build lib cli start clean tests
+.PHONY: all build lib cli start clean tests run-test-server
 
 all: clean build
 
@@ -69,3 +69,6 @@ build/connection_test: lib $(TEST_C_FILES)
 build/api_test: lib $(TEST_C_FILES)
 	gcc $(GCC_FLAGS) $(GCC_INCLUDE_FLAGS) $(GCC_LIBRARY_FLAGS) -L./build -lbushpath -o build/api_test tests/api_test.c
 	./build/api_test
+
+run-test-server:
+	ruby -run -ehttpd . -p8000

@@ -23,26 +23,46 @@ G_BEGIN_DECLS
 typedef struct _BPTCPService      BPTCPService;
 typedef struct _BPTCPServiceClass BPTCPServiceClass;
 
+typedef enum _BPTCPServiceMode {
+  BP_MODE_SINK_AND_SRC = 0,
+  BP_MODE_SRC_ONLY = 1,
+  BP_MODE_SINK_ONLY = 2,
+} BPTCPServiceMode;
+
 struct _BPTCPService
 {
   GstElement element;
 
-  GstPad *srcpad;
+  GstPad *srcpad, *sinkpad;
 
+  // element params
+  gboolean ready;
+  BPTCPServiceMode mode;
   guint port;
   GString *address;
 
- 	guint remotePort;
- 	GString *remoteAddress;
-
+  // local bind address
 	GInetAddress *inetAddress;
 	GSocketAddress *socketAddress;
+
+  // remote connection
+  guint remotePort;
+  GString *remoteAddress;
+
+  // socket handle
 	GSocketService *service;
+
+  // connection ID
+  GQuark uid;
+  gboolean init;
+
 };
 
 struct _BPTCPServiceClass
 {
   GstElementClass parent_class;
+
+  void (*connected) (GstElement *element);
 };
 
 GType bptcpservice_get_type (void);

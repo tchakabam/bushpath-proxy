@@ -216,6 +216,8 @@ bpthrottler_chain (GstPad * pad, GstObject * parent, GstBuffer * buf)
 
   g_mutex_lock(&filter->mutex);
 
+  GST_DEBUG ("Got %" GST_PTR_FORMAT, buf);
+
   // enqueue the buffer
   g_queue_push_tail (
   	filter->queue,
@@ -243,7 +245,7 @@ void BP_Throttler_ThreadLoop (gpointer data, gpointer user_data)
   gsize maxBytes;
   GstFlowReturn ret;
 
-  g_message ("Thread loop run");
+  GST_DEBUG ("Thread loop run");
 
   // We skip all because a previous was too new (we can't push stuff out-of-order)
   // (blocks the foreach-loop here, kind off acts like a break in a while)
@@ -260,27 +262,31 @@ void BP_Throttler_ThreadLoop (gpointer data, gpointer user_data)
   	return;
   }
 
+  GST_DEBUG ("Got %" GST_PTR_FORMAT, buffer->data);
+
   // Constrain source bandwidth (and skip anything after on this queue run if we exceed it for now)
   bytes = gst_buffer_get_size (buffer->data);
   maxBytes = (filter->bandwidth / 8.0f) * ((nowMs - filter->lastPushTimeMs) / 1000.0f);
   if (bytes > maxBytes) {
     filter->currentTimeMs = -1;
-    g_message ("Holding data in (max %d bytes)", (int) maxBytes);
+    GST_DEBUG ("Holding data in (max %d bytes)", (int) maxBytes);
     return;
   }
 
-  g_message ("Pushing %d bytes of data through (max is %d bytes) ...", (int) bytes, (int) maxBytes);
+  GST_DEBUG ("Pushing %d bytes of data through (max is %d bytes) ...", (int) bytes, (int) maxBytes);
 
   // Push data on the source pad
   ret = gst_pad_push (filter->srcpad, buffer->data);
   if (ret != GST_FLOW_OK) {
-  	g_warning ("Flow return value is %u", ret);
+  	GST_WARNING ("Flow return value is: %s", gst_flow_get_name (ret));
+    gst_buffer_ref (buffer->data);
+    return;
   }
 
   // Set last push time
   filter->lastPushTimeMs = GetMonotonicTimeMs();
 
-  g_message ("Push time: %f", filter->lastPushTimeMs);
+  GST_DEBUG ("Push time: %ld", (long) filter->lastPushTimeMs);
 
   // Element we pop off here should always be the head element (we can't push stuff out-of-order)
   g_assert ( buffer == g_queue_pop_head (filter->queue) );
@@ -305,14 +311,14 @@ gpointer BP_Throttler_Thread (gpointer data)
 
   g_mutex_lock(&filter->mutex);
 
-  g_message ("Throttler thread running ...");
+  GST_DEBUG ("Throttler thread running ...");
 
   while (filter->running) {
   	// Note: g_cond_wait takes care of lockinng/unlocking mutex
   	//g_mutex_unlock(&filter->mutex);
   	// wait until we are triggered
     filter->waiting = TRUE;
-    g_message ("Throttler waiting ...");
+    GST_DEBUG ("Throttler waiting ...");
   	g_cond_wait (&filter->cond, &filter->mutex);
     filter->waiting = FALSE;
   	//g_mutex_lock(&filter->mutex);
@@ -320,11 +326,11 @@ gpointer BP_Throttler_Thread (gpointer data)
   	// set latest loop run timestamp
   	filter->currentTimeMs = GetMonotonicTimeMs();
 
-    g_message ("Running at %ld seconds ...", (long) filter->currentTimeMs / 1000);
+    GST_DEBUG ("Running at %ld seconds ...", (long) filter->currentTimeMs / 1000);
 
   	// jump back if the queue is empty
   	if (g_queue_is_empty (filter->queue)) {
-      g_message ("Queue empty");
+      GST_DEBUG ("Queue empty");
   		continue;
   	}
 
@@ -340,7 +346,7 @@ gpointer BP_Throttler_Thread (gpointer data)
       timeoutMs = 0;
     }
 
-    g_message ("Timeout: %ld ms", (long) timeoutMs);
+    GST_DEBUG ("Timeout: %ld ms", (long) timeoutMs);
 
   	// we want to be triggered again when the next buffer needs to be pushed out
   	g_timeout_add((guint) timeoutMs, BP_Throttler_ThreadNotifier, filter);

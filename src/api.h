@@ -1,5 +1,6 @@
 #include <glib.h>
 #include <gio/gio.h>
+#include <gst/gst.h>
 
 #pragma once
 
@@ -13,6 +14,9 @@ typedef BushpathProxyOptions BPOptions;
 typedef struct _BushpathProxy {
     GMainContext *context;
     BushpathProxyOptions options;
+
+    GstElement *tcpServiceSrc, *tcpServiceSink, *tcpClientSink, *tcpClientSrc, *inThrottler, *outThrottler, *httpParserIn, *httpParserOut;
+    GstElement *outPipeline, *inPipeline;
 } BushpathProxy;
 
 BushpathProxyOptions

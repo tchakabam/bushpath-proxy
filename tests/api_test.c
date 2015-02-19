@@ -91,7 +91,7 @@ setup (void **state)
     g_usleep (1);
   }
 
-  g_message ("MAIN LOOP RUNNING");
+  printf ("\nMain loop running\n\n");
 
   /*
   g_timeout_add_seconds (5,

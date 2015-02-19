@@ -32,6 +32,7 @@ struct _BPTCPClient
   guint remotePort;
 
   GstPad *sinkpad;
+  GstPad *srcpad;
 
   GSocketClient *client;
 

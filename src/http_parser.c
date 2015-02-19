@@ -177,8 +177,9 @@ bp_http_parser_class_init (BP_HTTPParserClass * klass)
         G_SIGNAL_RUN_LAST,
         G_STRUCT_OFFSET (BP_HTTPParserClass, header_complete),
         NULL, NULL,
-        g_cclosure_marshal_generic, G_TYPE_NONE, 0
-        );
+        g_cclosure_marshal_generic, G_TYPE_NONE,
+        0
+      );
 
 }
 
@@ -245,11 +246,11 @@ BP_HTTPParser_ParseRequestLine (BP_HTTPParser* parser, gchar* s)
     } while (FALSE);
 
     if (!parser->foundHTTP) {
-        g_message ("Not HTTP");
+        GST_DEBUG ("Not HTTP");
         return;
     }
 
-    g_message ("It's HTTP :)");
+    GST_DEBUG ("It's HTTP :)");
 }
 
 void
@@ -261,13 +262,13 @@ BP_HTTPParser_ParseHeaderLine (BP_HTTPParser* parser, gchar* s)
     gchar** tokens;
 
     if (strlen(s) == 0) {
-      g_message ("Header complete.");
+      GST_DEBUG ("Header complete.");
       parser->headerComplete = TRUE;
       g_signal_emit (G_OBJECT(parser), signals[SIG_HEADER_COMPLETE], 0);
       return;
     }
 
-    g_message ("Parsing line: %s", s);
+    GST_DEBUG ("Parsing line: %s", s);
     tokens = g_strsplit (s, " ", 2);
     g_return_if_fail (tokens);
 
@@ -292,7 +293,7 @@ BP_HTTPParser_ParseHeaderLine (BP_HTTPParser* parser, gchar* s)
         // TODO: Replace this by guard for max header line length
         /*
         if (strlen(tokens[1]) > MAX_HOSTNAME_LENGTH) {
-            g_warning ("Parsed host name (%s) length exceeds max length %d", tokens[1], MAX_HOSTNAME_LENGTH);
+            GST_WARNING ("Parsed host name (%s) length exceeds max length %d", tokens[1], MAX_HOSTNAME_LENGTH);
             break;
         }
         */
@@ -300,7 +301,7 @@ BP_HTTPParser_ParseHeaderLine (BP_HTTPParser* parser, gchar* s)
         // Length should be more than two chars (with termination character)
         len = strlen(tokens[1]);
         if (len <= 2) {
-            g_warning ("Parsed host name (%s) is too short", tokens[1]);
+            GST_WARNING ("Parsed host name (%s) is too short", tokens[1]);
             break;
         }
 
@@ -308,7 +309,7 @@ BP_HTTPParser_ParseHeaderLine (BP_HTTPParser* parser, gchar* s)
         // free vector
         g_strfreev (tokens);
         // log
-        g_message ("Destination host is: %s", parser->host->str);
+        GST_DEBUG ("Destination host is: %s", parser->host->str);
 
     } while (FALSE);
 }
@@ -354,20 +355,20 @@ BP_HTTPParser_ReadConnectionHeader (BP_HTTPParser* parser, gboolean*res)
           break;
         }
 
-        //g_message ("Line buffer: %s", parser->lineBuffer->str);
+        //GST_DEBUG ("Line buffer: %s", parser->lineBuffer->str);
 
         termCR = strstr(parser->lineBuffer->str, "\r");
         termLF = strstr(parser->lineBuffer->str, "\n");
 
         // No CR-LF sequence found yet in buffer
         if (!termCR || !termLF) {
-          g_message ("No CR-LF sequence found.");
+          GST_DEBUG ("No CR-LF sequence found.");
           break;
         }
 
         // Validate it's an actual sequence
         if (termCR != termLF -1) {
-          g_error ("Invalid HTTP header line: LF char is not followed directly by LF char.");
+          GST_ERROR ("Invalid HTTP header line: LF char is not followed directly by LF char.");
           *res = FALSE;
           return;
         }
@@ -378,7 +379,7 @@ BP_HTTPParser_ReadConnectionHeader (BP_HTTPParser* parser, gboolean*res)
         line[lineLength] = '\0';
         memcpy (line, parser->lineBuffer->str, lineLength);
         g_string_erase (parser->lineBuffer, 0, lineLength + 2);
-        g_message ("Read line of length: %u; %s", lineLength, line);
+        GST_DEBUG ("Read line of length: %d; %s", (int) lineLength, line);
 
         // Increment line read count
         parser->lineCount++;

@@ -1,5 +1,7 @@
 #include "tcp_client.h"
 
+#define READ_BUFFER_SIZE 4096
+
 #define GST_CAT_DEFAULT bptcpclient_debug
 GST_DEBUG_CATEGORY_STATIC (GST_CAT_DEFAULT);
 
@@ -19,6 +21,7 @@ static void bptcpclient_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
 static gboolean bptcpclient_sink_event (GstPad * pad, GstObject * parent, GstEvent * event);
+static gboolean bptcpclient_src_event (GstPad * pad, GstObject * parent, GstEvent * event);
 static GstFlowReturn bptcpclient_chain (GstPad * pad, GstObject * parent, GstBuffer * buf);
 
 void
@@ -99,6 +102,12 @@ bptcpclient_init (BPTCPClient * filter)
   GST_PAD_SET_PROXY_CAPS (filter->sinkpad);
   gst_element_add_pad (GST_ELEMENT (filter), filter->sinkpad);
 
+  filter->srcpad = gst_pad_new_from_static_template (&src_factory, "src");
+  gst_pad_set_event_function (filter->srcpad,
+                              GST_DEBUG_FUNCPTR(bptcpclient_src_event));
+  GST_PAD_SET_PROXY_CAPS (filter->srcpad);
+  gst_element_add_pad (GST_ELEMENT (filter), filter->srcpad);
+
   filter->client = g_socket_client_new();
 
   filter->connection = NULL;
@@ -161,6 +170,95 @@ BP_TCPClient_InvalidRequest (GIOChannel *channel,
   return TRUE;
 }
 
+gboolean
+BP_TCPClient_Read (GIOChannel *channel,
+                                        GIOCondition idCond,
+                                        gpointer user_data)
+{
+  BPTCPClient *filter = BP_TCPCLIENT (user_data);
+  gchar buffer[READ_BUFFER_SIZE];
+  gsize bufferSize = READ_BUFFER_SIZE;
+  gsize bytesRead = 0;
+  GError *error = NULL;
+  GIOStatus status;
+  gboolean ret = TRUE;
+  GstBuffer *gstBuffer;
+  GstMapInfo bufferMap;
+
+  g_assert (channel == filter->channel);
+
+  status = g_io_channel_read_chars (channel, buffer, bufferSize, &bytesRead, &error);
+  if (status != G_IO_STATUS_NORMAL) {
+    g_warning ("Channel read status is %d", (int) status);
+  }
+  if (error != NULL) {
+    g_warning ("Error reading from channel: %s", error->message);
+    g_error_free (error);
+    ret = FALSE;
+  }
+
+  g_message ("Read %d bytes", (int) bytesRead);
+
+  switch (status) {
+  case G_IO_STATUS_NORMAL:
+  case G_IO_STATUS_EOF:
+    gstBuffer = gst_buffer_new_and_alloc (bytesRead);
+    if (!gst_buffer_map(gstBuffer, &bufferMap, GST_MAP_WRITE)) {
+      g_error ("Memory allocation error !!");
+      return FALSE;
+    }
+
+    memcpy (bufferMap.data, buffer, bytesRead);
+
+    gst_buffer_unmap(gstBuffer, &bufferMap);
+    ret = gst_pad_push (filter->srcpad, gstBuffer);
+
+    if (ret != GST_FLOW_OK) {
+      g_warning ("Flow return was %d", (int) ret);
+    }
+
+    break;
+  case G_IO_STATUS_AGAIN:
+  case G_IO_STATUS_ERROR:
+    break;
+  }
+
+  return ret;
+}
+
+gboolean
+BP_TCPClient_Write (BPTCPClient* filter, guint8* data, gsize size)
+{
+  GError* error = NULL;
+  gsize bytesWritten = 0;
+  GIOStatus status;
+  gboolean ret = TRUE;
+
+  status = g_io_channel_write_chars (filter->channel, (const gchar*) data, size, &bytesWritten, &error);
+  if (status != G_IO_STATUS_NORMAL) {
+    g_warning ("Channel write status is %d", (int) status);
+  }
+  if (error != NULL) {
+    g_warning ("Error writing to channel: %s", error->message);
+    g_error_free (error);
+    ret = FALSE;
+  }
+
+  status = g_io_channel_flush (filter->channel, &error);
+  if (status != G_IO_STATUS_NORMAL) {
+    g_warning ("Channel flush status is %d", (int) status);
+  }
+  if (error != NULL) {
+    g_warning ("Error flushing channel: %s", error->message);
+    g_error_free (error);
+    ret = FALSE;
+  }
+
+  g_message ("Wrote %d bytes", (int) bytesWritten);
+
+  return TRUE;
+}
+
 GError*
 BP_TCPClient_Connect (BPTCPClient* filter)
 {
@@ -203,7 +301,8 @@ BP_TCPClient_Connect (BPTCPClient* filter)
 
   g_io_add_watch(channel, G_IO_HUP, BP_TCPClient_HangUp, filter);
   g_io_add_watch(channel, G_IO_ERR, BP_TCPClient_Error, filter);
-  g_io_add_watch(channel, G_IO_ERR, BP_TCPClient_InvalidRequest, filter);
+  g_io_add_watch(channel, G_IO_NVAL, BP_TCPClient_InvalidRequest, filter);
+  g_io_add_watch(channel, G_IO_IN, BP_TCPClient_Read, filter);
 
   g_free (address);
 
@@ -214,14 +313,19 @@ static void
 bptcpclient_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
+
+  //g_message ("bptcpclient_set_property");
+
   BPTCPClient *filter = BP_TCPCLIENT (object);
 
   switch (prop_id) {
     case PROP_DESTINATION_ADDRESS:
       g_string_assign (filter->remoteAddress, g_value_get_string(value));
+      GST_DEBUG_OBJECT (filter, "Set destination address: %s", filter->remoteAddress->str);
       break;
     case PROP_DESTINATION_PORT:
       filter->remotePort = g_value_get_uint(value);
+      GST_DEBUG_OBJECT (filter, "Set destination address: %u", (guint) filter->remotePort);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -252,10 +356,8 @@ bptcpclient_get_property (GObject * object, guint prop_id,
 static gboolean
 bptcpclient_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
 {
-  gboolean ret;
-  BPTCPClient *filter;
-
-  filter = BP_TCPCLIENT (parent);
+  BPTCPClient *filter = BP_TCPCLIENT (parent);
+  gboolean ret = TRUE;
 
   switch (GST_EVENT_TYPE (event)) {
     case GST_EVENT_CAPS:
@@ -276,6 +378,20 @@ bptcpclient_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
   return ret;
 }
 
+static gboolean
+bptcpclient_src_event (GstPad * pad, GstObject * parent, GstEvent * event)
+{
+  BPTCPClient *filter = BP_TCPCLIENT (parent);
+  gboolean ret = TRUE;
+
+  switch (GST_EVENT_TYPE (event)) {
+    default:
+      ret = gst_pad_event_default (pad, parent, event);
+      break;
+  }
+  return ret;
+}
+
 /* chain function
  * this function does the actual processing
  */
@@ -283,10 +399,8 @@ static GstFlowReturn
 bptcpclient_chain (GstPad * pad, GstObject * parent, GstBuffer * buf)
 {
   BPTCPClient *filter = BP_TCPCLIENT (parent);
-  GError* error = NULL;
   GstMapInfo bufferMap;
-  gsize bytesWritten;
-  GIOStatus status;
+  GstFlowReturn ret = GST_FLOW_OK;
 
   if (!filter->connected) {
     BP_TCPClient_Connect(filter);
@@ -294,26 +408,16 @@ bptcpclient_chain (GstPad * pad, GstObject * parent, GstBuffer * buf)
 
   g_return_val_if_fail(filter->connected, GST_FLOW_ERROR);
 
-  if(!gst_buffer_map (buf, &bufferMap, GST_MAP_READ)) {
-    g_error ("Memory allocation error!!");
-    return GST_FLOW_ERROR;
-  }
+  gst_buffer_map (buf, &bufferMap, GST_MAP_READ);
 
-  status = g_io_channel_write_chars (filter->channel, (const gchar*) bufferMap.data, bufferMap.size, &bytesWritten, &error);
-
-  if (status != G_IO_STATUS_NORMAL) {
-    g_warning ("Channel write status is %d", (int) status);
-  }
-
-  if (error != NULL) {
-    g_error ("Error writing to channel: %s", error->message);
-    g_error_free (error);
+  if (!BP_TCPClient_Write (filter, bufferMap.data, bufferMap.size)) {
+    ret = GST_FLOW_ERROR;
   }
 
   gst_buffer_unmap (buf, &bufferMap);
   gst_buffer_unref (buf);
 
-  return GST_FLOW_OK;
+  return ret;
 }
 
 
